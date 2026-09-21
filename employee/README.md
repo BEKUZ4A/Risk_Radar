@@ -9,10 +9,10 @@ npm install
 npm run dev
 ```
 
-The API is intentionally pointed at the deployed backend:
+The default API points to the local Django backend:
 
 ```text
-http://13.60.20.155
+http://127.0.0.1:8000
 ```
 
 Copy `.env.example` to `.env` only if the API URL needs to be changed.

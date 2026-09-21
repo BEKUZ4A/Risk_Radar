@@ -78,6 +78,28 @@ class CustomerCatalogAccessTests(TestCase):
         category.refresh_from_db()
         self.assertEqual(category.description, 'Updated by customer')
 
+    def test_employee_can_browse_catalog(self):
+        employee = User.objects.create_user(
+            username='employee',
+            email='employee@example.com',
+            password='A-strong-password-123',
+            role=User.Role.EMPLOYEE,
+        )
+        category = Category.objects.create(name='Employee category', created_by=self.customer)
+        Product.objects.create(
+            category=category,
+            name='Employee product',
+            price='10.00',
+            stock_quantity=5,
+            created_by=self.customer,
+        )
+        self.client.force_authenticate(employee)
+
+        response = self.client.get('/api/catalog/products/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data[0]['name'], 'Employee product')
+
     def test_customer_can_create_product_with_frontend_fields(self):
         category = Category.objects.create(name='Products category', created_by=self.customer)
         response = self.client.post(

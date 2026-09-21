@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 
 from apps.users.models import User
-from apps.users.permissions import IsOwnerOrCustomer, is_root_user
+from apps.users.permissions import IsCatalogViewer, IsOwnerOrCustomer, is_root_user
 from apps.risks.services import RiskEngineService
 
 from .models import Category, Product
@@ -14,7 +14,7 @@ from .serializers import CategorySerializer, ProductSerializer
 class CategoryListCreateAPIView(APIView):
     """Katalog kategoriyalari — faqat OWNER/CUSTOMER."""
 
-    permission_classes = [IsOwnerOrCustomer]
+    permission_classes = [IsCatalogViewer]
 
     @extend_schema(responses={200: CategorySerializer(many=True)})
     def get(self, request):
@@ -31,7 +31,7 @@ class CategoryListCreateAPIView(APIView):
 
 
 class CategoryDetailAPIView(APIView):
-    permission_classes = [IsOwnerOrCustomer]
+    permission_classes = [IsCatalogViewer]
 
     @extend_schema(responses={200: CategorySerializer, 404: dict})
     def get_object(self, pk):
@@ -69,7 +69,7 @@ class CategoryDetailAPIView(APIView):
 class ProductListCreateAPIView(APIView):
     """Mahsulotlar — faqat OWNER/CUSTOMER."""
 
-    permission_classes = [IsOwnerOrCustomer]
+    permission_classes = [IsCatalogViewer]
 
     @extend_schema(responses={200: ProductSerializer(many=True)})
     def get(self, request):
@@ -90,7 +90,7 @@ class ProductListCreateAPIView(APIView):
 
 
 class ProductDetailAPIView(APIView):
-    permission_classes = [IsOwnerOrCustomer]
+    permission_classes = [IsCatalogViewer]
 
     @extend_schema(responses={200: ProductSerializer, 404: dict})
     def get_object(self, pk):
