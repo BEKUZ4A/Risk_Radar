@@ -7,18 +7,15 @@ services:
       - path: .env
         required: false
     environment:
-      DB_ENGINE: postgres
-      DB_HOST: db
-      DB_NAME: risk_radar
-      DB_USER: postgres
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
-      DB_PORT: "5432"
+      DB_ENGINE: sqlite
+      SQLITE_DB_PATH: /app/data/db.sqlite3
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
-      - db
       - redis
+    volumes:
+      - sqlite_data:/app/data
     command: >
       sh -c "python manage.py migrate --noinput &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
@@ -29,28 +26,16 @@ services:
       - path: .env
         required: false
     environment:
-      DB_ENGINE: postgres
-      DB_HOST: db
-      DB_NAME: risk_radar
-      DB_USER: postgres
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
-      DB_PORT: "5432"
+      DB_ENGINE: sqlite
+      SQLITE_DB_PATH: /app/data/db.sqlite3
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
-      - db
       - redis
-    command: celery -A config.celery worker --loglevel=info
-
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: risk_radar
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - sqlite_data:/app/data
+    command: celery -A config.celery worker --loglevel=info
 
   redis:
     image: redis:7-alpine
@@ -58,5 +43,5 @@ services:
       - redisdata:/data
 
 volumes:
-  pgdata:
+  sqlite_data:
   redisdata:

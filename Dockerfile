@@ -16,6 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 RUN addgroup --system app && adduser --system --ingroup app app \
+    && mkdir -p /app/data \
+    && touch /app/data/db.sqlite3 \
     && chown -R app:app /app
 USER app
 
