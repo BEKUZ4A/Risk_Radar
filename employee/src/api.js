@@ -46,6 +46,14 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  register: (username, email, password) => request('/api/users/auth/register/', {
+    method: 'POST',
+    body: JSON.stringify({ username, email, password }),
+  }),
+  verifyEmail: (email, code) => request('/api/users/auth/verify-email/', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  }),
   login: (email, password) => request('/api/users/auth/jwt/create/', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
