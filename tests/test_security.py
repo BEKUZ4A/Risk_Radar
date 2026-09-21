@@ -1,7 +1,9 @@
+from decimal import Decimal
+
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 
-from apps.catalog.models import Category
+from apps.catalog.models import Category, Product
 from apps.users.models import User
 from apps.users.serializers import RegisterSerializer
 from rest_framework.test import APIClient
@@ -75,3 +77,27 @@ class CustomerCatalogAccessTests(TestCase):
         self.assertEqual(response.status_code, 200)
         category.refresh_from_db()
         self.assertEqual(category.description, 'Updated by customer')
+
+    def test_customer_can_create_product_with_frontend_fields(self):
+        category = Category.objects.create(name='Products category', created_by=self.customer)
+        response = self.client.post(
+            '/api/catalog/products/',
+            {
+                'category': category.pk,
+                'name': 'Risk Radar product',
+                'description': 'Product description',
+                'image': 'https://example.com/product.png',
+                'price': '125.50',
+                'count': 7,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        product = Product.objects.get(pk=response.data['id'])
+        self.assertEqual(product.name, 'Risk Radar product')
+        self.assertEqual(product.description, 'Product description')
+        self.assertEqual(product.image, 'https://example.com/product.png')
+        self.assertEqual(product.price, Decimal('125.50'))
+        self.assertEqual(product.stock_quantity, 7)
+        self.assertEqual(response.data['count'], 7)

@@ -12,6 +12,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
+    count = serializers.IntegerField(source='stock_quantity', required=False)
 
     class Meta:
         model = Product
@@ -21,7 +22,9 @@ class ProductSerializer(serializers.ModelSerializer):
             'category_name',
             'name',
             'description',
+            'image',
             'price',
+            'count',
             'stock_quantity',
             'is_active',
             'created_by',
