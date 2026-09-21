@@ -50,6 +50,10 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   }),
+  googleLogin: (credential) => request('/api/users/auth/google/', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+  }),
   products: () => request('/api/catalog/products/'),
   categories: () => request('/api/catalog/categories/'),
   checkout: (productId, quantity, paymentMethodId) => request('/api/payments/checkout/', {

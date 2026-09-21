@@ -12,6 +12,40 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+
+  useEffect(() => {
+    if (!googleClientId) return undefined
+    const renderGoogleButton = () => {
+      if (!window.google?.accounts?.id) return false
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async ({ credential }) => {
+          setError('')
+          setLoading(true)
+          try {
+            const tokens = await api.googleLogin(credential)
+            saveTokens(tokens)
+            onLogin()
+          } catch (err) {
+            setError(err.message)
+          } finally {
+            setLoading(false)
+          }
+        },
+      })
+      window.google.accounts.id.renderButton(
+        document.getElementById('google-login'),
+        { theme: 'filled_black', size: 'large', width: 360, text: 'continue_with' },
+      )
+      return true
+    }
+    if (renderGoogleButton()) return undefined
+    const timer = window.setInterval(() => {
+      if (renderGoogleButton()) window.clearInterval(timer)
+    }, 250)
+    return () => window.clearInterval(timer)
+  }, [googleClientId, onLogin])
 
   async function submit(event) {
     event.preventDefault()
@@ -41,6 +75,8 @@ function Login({ onLogin }) {
           {error && <div className="alert error">{error}</div>}
           <button className="primary wide" disabled={loading}>{loading ? 'Signing in…' : 'Sign in'}</button>
         </form>
+        {googleClientId && <><div className="login-divider"><span>or</span></div><div id="google-login" className="google-login" /></>}
+        {!googleClientId && <small>Google login requires VITE_GOOGLE_CLIENT_ID in employee/.env</small>}
         <small>API: 13.60.20.155 · Employee access only</small>
       </section>
       <section className="login-art"><Scene /><div className="art-copy"><span>01</span><p>One catalog.<br /><strong>Every decision.</strong></p></div></section>
