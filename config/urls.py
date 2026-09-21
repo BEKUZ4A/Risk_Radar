@@ -18,6 +18,8 @@ def api_root(request):
                 'email_request_code': '/api/users/auth/email/request-code/',
                 'email_verify_code': '/api/users/auth/email/verify-code/',
                 'jwt_create': '/api/users/auth/jwt/create/',
+                'google_login': '/api/users/auth/google/',
+                'owner_create_customer': '/api/users/customers/',
                 'categories': '/api/catalog/categories/',
                 'products': '/api/catalog/products/',
                 'employee_checkout': '/api/payments/checkout/',

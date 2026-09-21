@@ -1,6 +1,12 @@
 import random
+import re
+from uuid import uuid4
 
 from django.core.cache import cache
+from django.conf import settings
+from google.auth.exceptions import GoogleAuthError
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,6 +24,8 @@ from apps.users.serializers import (
     PasswordResetConfirmSerializer,
     UserSerializer,
     UserActivityLogSerializer,
+    GoogleAuthSerializer,
+    OwnerCustomerCreateSerializer,
 )
 from apps.users.tasks import send_otp_email
 from apps.users.utils import (
@@ -50,6 +58,69 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class EmailTokenObtainPairView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
+
+
+class GoogleAuthView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    @extend_schema(request=GoogleAuthSerializer, responses={200: dict, 400: dict, 503: dict})
+    def post(self, request):
+        serializer = GoogleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if not settings.GOOGLE_CLIENT_ID:
+            return Response(
+                {'error': 'Google login is not configured.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            claims = id_token.verify_oauth2_token(
+                serializer.validated_data['credential'],
+                google_requests.Request(),
+                settings.GOOGLE_CLIENT_ID,
+            )
+        except (ValueError, GoogleAuthError):
+            return Response(
+                {'error': 'Google credential is invalid or expired.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        email = str(claims.get('email', '')).lower().strip()
+        subject = str(claims.get('sub', '')).strip()
+        if not email or not subject or not claims.get('email_verified', False):
+            return Response(
+                {'error': 'Google account email is not verified.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = User.objects.filter(google_subject=subject).first()
+        if user is None:
+            user = User.objects.filter(email=email).first()
+        if user is None:
+            base_username = re.sub(r'[^a-zA-Z0-9_.-]', '', email.split('@')[0])[:100] or 'google-user'
+            user = User.objects.create_user(
+                username=f'{base_username}-{uuid4().hex[:8]}',
+                email=email,
+                first_name=str(claims.get('given_name', '')),
+                last_name=str(claims.get('family_name', '')),
+                password=uuid4().hex,
+                role=User.Role.EMPLOYEE,
+                is_email_verified=True,
+                google_subject=subject,
+            )
+        else:
+            user.google_subject = subject
+            user.is_email_verified = True
+            user.save(update_fields=['google_subject', 'is_email_verified'])
+
+        UserActivityLog.objects.create(
+            user=user,
+            action_name='GOOGLE_LOGIN',
+            ip_address=_client_ip(request),
+            request_data={},
+        )
+        return Response(_issue_tokens(user), status=status.HTTP_200_OK)
 
 
 class RegisterView(APIView):
@@ -91,6 +162,19 @@ class RegisterView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class OwnerCustomerCreateView(APIView):
+    permission_classes = [IsBusinessOwner]
+
+    @extend_schema(request=OwnerCustomerCreateSerializer, responses={201: UserSerializer, 400: dict})
+    def post(self, request):
+        serializer = OwnerCustomerCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        user.role = User.Role.CUSTOMER
+        user.save(update_fields=['role'])
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
 class VerifyEmailOTPView(APIView):

@@ -36,8 +36,16 @@ class RegisterSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', ''),
             password=validated_data['password'],
             is_email_verified=False,
-            role=User.Role.CUSTOMER,
+            role=User.Role.EMPLOYEE,
         )
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    credential = serializers.CharField(write_only=True, trim_whitespace=True)
+
+
+class OwnerCustomerCreateSerializer(RegisterSerializer):
+    pass
 
 
 class EmailCodeRequestSerializer(serializers.Serializer):

@@ -9,3 +9,4 @@ psycopg2-binary>=2.9
 requests>=2.31
 stripe>=10.0
 celery[redis]>=5.4
+google-auth>=2.35

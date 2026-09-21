@@ -20,7 +20,7 @@ class RegistrationSecurityTests(TestCase):
         self.assertNotIn('role', serializer.fields)
         self.assertTrue(serializer.is_valid())
         user = serializer.save()
-        self.assertEqual(user.role, 'CUSTOMER')
+        self.assertEqual(user.role, User.Role.EMPLOYEE)
 
 
 @override_settings(

@@ -161,6 +161,7 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.1.0',
 }
 ENABLE_API_DOCS = os.getenv('ENABLE_API_DOCS', 'True' if DEBUG else 'False') == 'True'
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '').strip()
 
 REDIS_URL = os.getenv('REDIS_URL', '').strip()
 if not REDIS_URL and not DEBUG:

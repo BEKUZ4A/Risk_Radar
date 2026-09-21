@@ -12,6 +12,7 @@ class User(AbstractUser):
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CUSTOMER)
     email = models.EmailField(unique=True)
+    google_subject = models.CharField(max_length=255, unique=True, null=True, blank=True)
     is_email_verified = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'email'

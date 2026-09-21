@@ -45,3 +45,11 @@ class FrontendJsonApiTests(TestCase):
         self.assertEqual(risk_log.source_app, RiskLog.SourceApp.CUSTOMER_APP)
         self.assertEqual(risk_log.payload_json['order_id'], 42)
         self.assertEqual(risk_log.payload_json['items'][0]['sku'], 'SKU-1')
+
+    def test_google_login_requires_configuration(self):
+        response = self.client.post(
+            '/api/users/auth/google/',
+            {'credential': 'not-a-real-google-token'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 503)
