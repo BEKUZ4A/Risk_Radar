@@ -46,6 +46,8 @@ function StripeCard({ onPaymentMethod, disabled }) {
 
 function Login({ onLogin }) {
   const [mode, setMode] = useState('login')
+  const [loginMethod, setLoginMethod] = useState('password')
+  const [loginCodeStep, setLoginCodeStep] = useState(false)
   const [registerStep, setRegisterStep] = useState('form')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -96,7 +98,18 @@ function Login({ onLogin }) {
     setLoading(true)
     try {
       if (mode === 'login') {
-        const tokens = await api.login(email, password)
+        const tokens = loginMethod === 'code' && loginCodeStep
+          ? await api.verifyLoginCode(email, code)
+          : loginMethod === 'code'
+            ? await api.requestLoginCode(email).then((result) => {
+              setLoginCodeStep(true)
+              return result
+            })
+            : await api.login(email, password)
+        if (loginMethod === 'code' && !loginCodeStep) {
+          setLoading(false)
+          return
+        }
         saveTokens(tokens)
         onLogin()
       } else if (registerStep === 'form') {
@@ -123,14 +136,15 @@ function Login({ onLogin }) {
         <div className="brand-mark">RR</div>
         <p className="eyebrow">EMPLOYEE PORTAL</p>
         <h1>Move faster.<br /><span>Work smarter.</span></h1>
-        <p className="muted">{mode === 'login' ? 'Sign in to browse the catalog and place a secure Stripe order.' : registerStep === 'form' ? 'Create your employee account to start ordering.' : `Enter the 6-digit code sent to ${email}.`}</p>
+        <p className="muted">{mode === 'login' ? loginMethod === 'code' && loginCodeStep ? `Enter the 6-digit code sent to ${email}.` : 'Sign in to browse the catalog and place a secure Stripe order.' : registerStep === 'form' ? 'Create your employee account to start ordering.' : `Enter the 6-digit code sent to ${email}.`}</p>
         <div className="auth-tabs"><button className={mode === 'login' ? 'active' : ''} type="button" onClick={() => { setMode('login'); setRegisterStep('form'); setError('') }}>Sign in</button><button className={mode === 'register' ? 'active' : ''} type="button" onClick={() => { setMode('register'); setRegisterStep('form'); setError('') }}>Register</button></div>
+        {mode === 'login' && <div className="login-method"><button type="button" className={loginMethod === 'password' ? 'active' : ''} onClick={() => { setLoginMethod('password'); setLoginCodeStep(false); setError('') }}>Password</button><button type="button" className={loginMethod === 'code' ? 'active' : ''} onClick={() => { setLoginMethod('code'); setLoginCodeStep(false); setError('') }}>Email code</button></div>}
         <form onSubmit={submit}>
           {mode === 'register' && registerStep === 'form' && <label>Username<input required value={username} onChange={(event) => setUsername(event.target.value)} placeholder="your-name" /></label>}
           <label>Email<input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" /></label>
-          {mode === 'register' && registerStep === 'verify' ? <label>Verification code<input inputMode="numeric" pattern="[0-9]{6}" maxLength="6" required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))} placeholder="123456" /></label> : <label>Password<input type="password" required minLength="12" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••" /></label>}
+          {mode === 'register' && registerStep === 'verify' || mode === 'login' && loginMethod === 'code' && loginCodeStep ? <label>Verification code<input inputMode="numeric" pattern="[0-9]{6}" maxLength="6" required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))} placeholder="123456" /></label> : mode === 'login' && loginMethod === 'code' ? null : <label>Password<input type="password" required minLength="12" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••••••" /></label>}
           {error && <div className="alert error">{error}</div>}
-          <button className="primary wide" disabled={loading}>{loading ? 'Please wait…' : mode === 'login' ? 'Sign in' : registerStep === 'form' ? 'Create employee account' : 'Verify email'}</button>
+          <button className="primary wide" disabled={loading}>{loading ? 'Please wait…' : mode === 'login' ? loginMethod === 'code' && !loginCodeStep ? 'Send email code' : 'Sign in' : registerStep === 'form' ? 'Create employee account' : 'Verify email'}</button>
         </form>
         {mode === 'login' && googleClientId && <><div className="login-divider"><span>or</span></div><div id="google-login" className="google-login" /></>}
         {!googleClientId && <small>Google login requires VITE_GOOGLE_CLIENT_ID in employee/.env</small>}

@@ -59,6 +59,14 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   }),
+  requestLoginCode: (email) => request('/api/users/auth/email/request-code/', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  }),
+  verifyLoginCode: (email, code) => request('/api/users/auth/email/verify-code/', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  }),
   googleLogin: (credential) => request('/api/users/auth/google/', {
     method: 'POST',
     body: JSON.stringify({ credential }),
