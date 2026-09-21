@@ -1,6 +1,7 @@
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -165,7 +166,11 @@ ENABLE_API_DOCS = os.getenv('ENABLE_API_DOCS', 'True' if DEBUG else 'False') == 
 REDIS_URL = os.getenv('REDIS_URL', '').strip()
 if not REDIS_URL and not DEBUG:
     raise RuntimeError('Production REDIS_URL must be configured.')
-if REDIS_URL:
+redis_host = urlparse(REDIS_URL).hostname if REDIS_URL else None
+use_redis_cache = bool(REDIS_URL) and not (
+    DEBUG and redis_host in {'localhost', '127.0.0.1', '::1'}
+)
+if use_redis_cache:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
