@@ -56,3 +56,17 @@ class DashboardUnifiedJSONSerializer(serializers.Serializer):
     product_stock_analytics = serializers.ListField()
     inactive_users_list = serializers.ListField()
     recent_risk_logs = serializers.ListField()
+
+
+class RiskEvaluationSignalSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    points = serializers.IntegerField()
+    message = serializers.CharField()
+
+
+class RiskEvaluationResponseSerializer(serializers.Serializer):
+    risk_score = serializers.IntegerField()
+    risk_level = serializers.CharField()
+    signals = RiskEvaluationSignalSerializer(many=True)
+    analysis = serializers.CharField()
+    risk_log_id = serializers.IntegerField()

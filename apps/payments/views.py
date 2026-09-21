@@ -83,6 +83,7 @@ class EmployeeCheckoutAPIView(APIView):
 class EmployeePaymentListAPIView(APIView):
     permission_classes = [IsEmployee]
 
+    @extend_schema(responses={200: PaymentSerializer(many=True)})
     def get(self, request):
         qs = Payment.objects.filter(employee=request.user).select_related('product')[:50]
         return Response(PaymentSerializer(qs, many=True).data)

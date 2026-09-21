@@ -33,15 +33,18 @@ class CategoryListCreateAPIView(APIView):
 class CategoryDetailAPIView(APIView):
     permission_classes = [IsOwnerOrCustomer]
 
+    @extend_schema(responses={200: CategorySerializer, 404: dict})
     def get_object(self, pk):
         return Category.objects.filter(pk=pk).first()
 
+    @extend_schema(responses={200: CategorySerializer, 404: dict})
     def get(self, request, pk):
         obj = self.get_object(pk)
         if not obj:
             return Response({'error': 'Kategoriya topilmadi.'}, status=404)
         return Response(CategorySerializer(obj).data)
 
+    @extend_schema(request=CategorySerializer, responses={200: CategorySerializer, 400: dict, 404: dict})
     def put(self, request, pk):
         obj = self.get_object(pk)
         if not obj:
@@ -52,6 +55,7 @@ class CategoryDetailAPIView(APIView):
         serializer.save()
         return Response(serializer.data)
 
+    @extend_schema(responses={204: None, 403: dict, 404: dict})
     def delete(self, request, pk):
         if not is_root_user(request.user) and request.user.role != User.Role.OWNER:
             return Response({'error': 'Faqat OWNER o‘chira oladi.'}, status=403)
@@ -88,15 +92,18 @@ class ProductListCreateAPIView(APIView):
 class ProductDetailAPIView(APIView):
     permission_classes = [IsOwnerOrCustomer]
 
+    @extend_schema(responses={200: ProductSerializer, 404: dict})
     def get_object(self, pk):
         return Product.objects.select_related('category').filter(pk=pk).first()
 
+    @extend_schema(responses={200: ProductSerializer, 404: dict})
     def get(self, request, pk):
         obj = self.get_object(pk)
         if not obj:
             return Response({'error': 'Mahsulot topilmadi.'}, status=404)
         return Response(ProductSerializer(obj).data)
 
+    @extend_schema(request=ProductSerializer, responses={200: ProductSerializer, 400: dict, 404: dict})
     def put(self, request, pk):
         obj = self.get_object(pk)
         if not obj:
@@ -113,6 +120,7 @@ class ProductDetailAPIView(APIView):
         )
         return Response(serializer.data)
 
+    @extend_schema(responses={200: dict, 403: dict, 404: dict})
     def delete(self, request, pk):
         if not is_root_user(request.user) and request.user.role != User.Role.OWNER:
             return Response({'error': 'Faqat OWNER o‘chira oladi.'}, status=403)

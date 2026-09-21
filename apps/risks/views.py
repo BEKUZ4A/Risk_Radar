@@ -11,6 +11,7 @@ from .serializers import (
     DashboardUnifiedJSONSerializer,
     EmployeePayloadSerializer,
     RiskLogSerializer,
+    RiskEvaluationResponseSerializer,
 )
 from .services import RiskEngineService
 
@@ -92,6 +93,7 @@ class EvaluateBusinessRiskAPIView(APIView):
 
     permission_classes = [IsBusinessOwner]
 
+    @extend_schema(responses={200: RiskEvaluationResponseSerializer})
     def post(self, request):
         result, log = RiskEngineService.evaluate_current_business()
         _audit(request, 'BUSINESS_RISK_EVALUATE', {'score': result.score, 'level': result.level})

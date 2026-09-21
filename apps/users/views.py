@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from drf_spectacular.utils import extend_schema
 
 from apps.users.models import User, UserActivityLog
 from apps.users.permissions import IsBusinessOwner
@@ -55,6 +56,7 @@ class RegisterView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(request=RegisterSerializer, responses={201: dict, 400: dict, 429: dict})
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if not serializer.is_valid():
@@ -97,6 +99,7 @@ class VerifyEmailOTPView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(request=EmailCodeVerifySerializer, responses={200: dict, 400: dict, 429: dict})
     def post(self, request):
         serializer = EmailCodeVerifySerializer(data=request.data)
         if not serializer.is_valid():
@@ -148,6 +151,7 @@ class RequestLoginCodeView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(request=EmailCodeRequestSerializer, responses={200: dict, 400: dict, 404: dict, 429: dict})
     def post(self, request):
         serializer = EmailCodeRequestSerializer(data=request.data)
         if not serializer.is_valid():
@@ -178,6 +182,7 @@ class VerifyLoginCodeView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(request=EmailCodeVerifySerializer, responses={200: dict, 400: dict, 429: dict})
     def post(self, request):
         serializer = EmailCodeVerifySerializer(data=request.data)
         if not serializer.is_valid():
@@ -225,6 +230,7 @@ class RequestPasswordResetEmailView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(request=EmailCodeRequestSerializer, responses={200: dict, 400: dict, 404: dict, 429: dict})
     def post(self, request):
         serializer = EmailCodeRequestSerializer(data=request.data)
         if not serializer.is_valid():
@@ -253,6 +259,7 @@ class ConfirmPasswordResetEmailView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    @extend_schema(request=PasswordResetConfirmSerializer, responses={200: dict, 400: dict, 429: dict})
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         if not serializer.is_valid():
@@ -293,6 +300,7 @@ class ConfirmPasswordResetEmailView(APIView):
 class AuditLogListAPIView(APIView):
     permission_classes = [IsBusinessOwner]
 
+    @extend_schema(responses={200: UserActivityLogSerializer(many=True)})
     def get(self, request):
         qs = UserActivityLog.objects.select_related('user').order_by('-timestamp')[:100]
         return Response(UserActivityLogSerializer(qs, many=True).data)
