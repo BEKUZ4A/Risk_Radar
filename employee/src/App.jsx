@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js'
+import { loadStripe } from '@stripe/stripe-js'
 import { api, clearTokens, getAccessToken, saveTokens } from './api'
 import Scene from './Scene'
 
@@ -6,6 +8,41 @@ const money = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
 })
+
+function StripeCard({ onPaymentMethod, disabled }) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function createPaymentMethod() {
+    if (!stripe || !elements) {
+      setError('Stripe is not configured yet.')
+      return
+    }
+    setLoading(true)
+    setError('')
+    const card = elements.getElement(CardElement)
+    const result = await stripe.createPaymentMethod({ type: 'card', card })
+    setLoading(false)
+    if (result.error) {
+      setError(result.error.message || 'Card details are invalid.')
+      return
+    }
+    onPaymentMethod(result.paymentMethod.id)
+  }
+
+  return (
+    <div className="stripe-card">
+      <label>Card details</label>
+      <div className="card-element"><CardElement options={{ hidePostalCode: true }} /></div>
+      {error && <small className="stripe-error">{error}</small>}
+      <button className="buy" type="button" disabled={disabled || loading || !stripe} onClick={createPaymentMethod}>
+        {loading ? 'Preparing card…' : 'Pay securely with Stripe'}
+      </button>
+    </div>
+  )
+}
 
 function Login({ onLogin }) {
   const [mode, setMode] = useState('login')
@@ -116,14 +153,16 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('catalog')
   const [paymentMethod, setPaymentMethod] = useState('')
+  const [stripePromise, setStripePromise] = useState(null)
 
   useEffect(() => {
     if (!loggedIn) return
     setLoading(true)
-    Promise.all([api.products(), api.categories()])
-      .then(([productData, categoryData]) => {
+    Promise.all([api.products(), api.categories(), api.config()])
+      .then(([productData, categoryData, config]) => {
         setProducts(Array.isArray(productData) ? productData : productData.results || [])
         setCategories(Array.isArray(categoryData) ? categoryData : categoryData.results || [])
+        if (config.stripe_publishable_key) setStripePromise(loadStripe(config.stripe_publishable_key))
       })
       .catch((err) => setNotice({ type: 'error', text: err.message }))
       .finally(() => setLoading(false))
@@ -155,9 +194,9 @@ function App() {
     setCart((current) => current.map((item) => item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item).filter((item) => item.quantity))
   }
 
-  async function checkout(item) {
+  async function checkout(item, selectedPaymentMethod = paymentMethod) {
     try {
-      const result = await api.checkout(item.id, item.quantity, paymentMethod.trim())
+      const result = await api.checkout(item.id, item.quantity, selectedPaymentMethod.trim())
       setCart((current) => current.filter((cartItem) => cartItem.id !== item.id))
       setNotice({ type: 'success', text: result.message || 'Payment successful. Stock updated.' })
       setProducts((current) => current.map((product) => product.id === item.id ? { ...product, stock_quantity: product.stock_quantity - item.quantity, count: product.count - item.quantity } : product))
@@ -186,8 +225,8 @@ function App() {
           <section className="orders"><div className="section-heading"><div><p className="eyebrow">ACCOUNT ACTIVITY</p><h2>My orders</h2></div></div>{payments.length ? payments.map((payment) => <div className="order-row" key={payment.id}><div><strong>{payment.product_name}</strong><span>{payment.created_at ? new Date(payment.created_at).toLocaleString() : 'Recent order'}</span></div><span>× {payment.quantity}</span><b className={`status ${payment.status.toLowerCase()}`}>{payment.status}</b><strong>{money.format(Number(payment.amount_total))}</strong></div>) : <div className="empty">No orders yet.</div>}</section>
         ) : (
           <>
-            <section className="toolbar"><div className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search products…" /></div><select value={category} onChange={(event) => setCategory(event.target.value)}><option value="all">All categories</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><span className="result-count">{visibleProducts.length} results</span></section>
-            <section className="catalog-layout"><div className="product-grid">{loading ? <div className="empty">Loading catalog…</div> : visibleProducts.map((product) => <article className="product-card" key={product.id}><div className="product-image">{product.image ? <img src={product.image} alt="" /> : <div className="image-placeholder"><span>◈</span></div>}<span className="stock">{product.stock_quantity ?? product.count ?? 0} in stock</span></div><div className="product-info"><p className="product-category">{product.category_name || 'CATALOG'}</p><h3>{product.name}</h3><p className="description">{product.description || 'Ready for your next decision.'}</p><div className="product-bottom"><strong>{money.format(Number(product.price))}</strong><button onClick={() => addToCart(product)} disabled={!Number(product.stock_quantity ?? product.count)}>Add to order <span>+</span></button></div></div></article>)}</div><aside className="cart"><div className="cart-head"><div><p className="eyebrow">YOUR SELECTION</p><h2>Order <span>{cart.length}</span></h2></div><span className="cart-icon">↗</span></div>{cart.length ? <>{cart.map((item) => <div className="cart-item" key={item.id}><div><strong>{item.name}</strong><span>{money.format(Number(item.price))}</span></div><div className="stepper"><button onClick={() => changeQuantity(item.id, -1)}>−</button><b>{item.quantity}</b><button onClick={() => changeQuantity(item.id, 1)}>+</button></div><button className="buy" onClick={() => checkout(item)}>Pay with Stripe</button></div>)}<div className="payment-method"><label>Stripe PaymentMethod ID (optional)<input value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} placeholder="pm_card_visa" /></label><small>Test mode uses <code>pm_card_visa</code> when empty.</small></div><div className="cart-total"><span>Total</span><strong>{money.format(cartTotal)}</strong></div></> : <div className="empty cart-empty">Your order is empty.<br /><span>Select a product to get started.</span></div>}</aside></section>
+            <section className="category-cards"><button className={category === 'all' ? 'category-card active' : 'category-card'} onClick={() => setCategory('all')}><strong>All</strong><span>{products.length} products</span></button>{categories.map((item) => <button key={item.id} className={category === String(item.id) ? 'category-card active' : 'category-card'} onClick={() => setCategory(String(item.id))}><strong>{item.name}</strong><span>{products.filter((product) => String(product.category) === String(item.id)).length} products</span></button>)}</section><section className="toolbar"><div className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search products…" /></div><span className="result-count">{visibleProducts.length} results</span></section>
+            <section className="catalog-layout"><div className="product-grid">{loading ? <div className="empty">Loading catalog…</div> : visibleProducts.map((product) => <article className="product-card" key={product.id}><div className="product-image">{product.image ? <img src={product.image} alt="" /> : <div className="image-placeholder"><span>◈</span></div>}<span className="stock">{product.stock_quantity ?? product.count ?? 0} in stock</span></div><div className="product-info"><p className="product-category">{product.category_name || 'CATALOG'}</p><h3>{product.name}</h3><p className="description">{product.description || 'Ready for your next decision.'}</p><div className="product-bottom"><strong>{money.format(Number(product.price))}</strong><button onClick={() => addToCart(product)} disabled={!Number(product.stock_quantity ?? product.count)}>Add to order <span>+</span></button></div></div></article>)}</div><aside className="cart"><div className="cart-head"><div><p className="eyebrow">YOUR SELECTION</p><h2>Order <span>{cart.length}</span></h2></div><span className="cart-icon">↗</span></div>{cart.length ? <>{cart.map((item) => <div className="cart-item" key={item.id}><div><strong>{item.name}</strong><span>{money.format(Number(item.price))}</span></div><div className="stepper"><button onClick={() => changeQuantity(item.id, -1)}>−</button><b>{item.quantity}</b><button onClick={() => changeQuantity(item.id, 1)}>+</button></div></div>)}{stripePromise ? <Elements stripe={stripePromise}><StripeCard disabled={!cart.length} onPaymentMethod={(method) => checkout(cart[0], method)} /></Elements> : <div className="payment-method"><label>Stripe PaymentMethod ID<input value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} placeholder="pm_card_visa" /></label><button className="buy" onClick={() => checkout(cart[0])}>Pay with Stripe</button><small>Stripe publishable key is not configured; test mode uses pm_card_visa.</small></div>}<div className="cart-total"><span>Total</span><strong>{money.format(cartTotal)}</strong></div></> : <div className="empty cart-empty">Your order is empty.<br /><span>Select a product to get started.</span></div>}</aside></section>
           </>
         )}
       </main>
