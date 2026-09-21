@@ -1,3 +1,4 @@
+from django.core.management import call_command
 from django.test import TestCase, override_settings
 
 from apps.catalog.models import Category
@@ -21,6 +22,21 @@ class RegistrationSecurityTests(TestCase):
         self.assertTrue(serializer.is_valid())
         user = serializer.save()
         self.assertEqual(user.role, User.Role.EMPLOYEE)
+
+    def test_promote_user_grants_full_administrator_access(self):
+        user = User.objects.create_user(
+            username='behruzbekb98',
+            email='behruzbekb98@gmail.com',
+            password='A-strong-password-123',
+            role=User.Role.EMPLOYEE,
+        )
+
+        call_command('promote_user', 'BEHRUZBEKB98@GMAIL.COM')
+
+        user.refresh_from_db()
+        self.assertEqual(user.role, User.Role.OWNER)
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
 
 
 @override_settings(
