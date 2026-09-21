@@ -9,6 +9,7 @@ services:
     environment:
       DB_ENGINE: sqlite
       SQLITE_DB_PATH: /app/data/db.sqlite3
+      ALLOWED_HOSTS: "13.60.20.155,${ALLOWED_HOSTS:-localhost,127.0.0.1}"
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
@@ -28,6 +29,7 @@ services:
     environment:
       DB_ENGINE: sqlite
       SQLITE_DB_PATH: /app/data/db.sqlite3
+      ALLOWED_HOSTS: "13.60.20.155,${ALLOWED_HOSTS:-localhost,127.0.0.1}"
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
