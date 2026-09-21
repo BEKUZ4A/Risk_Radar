@@ -196,6 +196,8 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_ALWAYS_EAGER = DEBUG
+CELERY_TASK_EAGER_PROPAGATES = DEBUG
 if not DEBUG and 'localhost' in CELERY_BROKER_URL:
     raise RuntimeError('Production Celery broker must not use localhost.')
 
