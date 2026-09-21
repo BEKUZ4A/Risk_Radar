@@ -4,7 +4,8 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DB_ENGINE: postgres
       DB_HOST: db
@@ -25,7 +26,8 @@ services:
   worker:
     build: .
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       DB_ENGINE: postgres
       DB_HOST: db
