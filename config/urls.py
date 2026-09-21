@@ -22,7 +22,6 @@ def api_root(request):
                 'products': '/api/catalog/products/',
                 'employee_checkout': '/api/payments/checkout/',
                 'dashboard_json': '/api/risks/dashboard-json/',
-                'ai_guardrail': '/api/ai_services/guardrail-prompt/',
             },
         }
     )
@@ -34,7 +33,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/users/', include('apps.users.urls')),
     path('api/risks/', include('apps.risks.urls')),
-    path('api/ai_services/', include('apps.ai_services.urls')),
     path('api/catalog/', include('apps.catalog.urls')),
     path('api/payments/', include('apps.payments.urls')),
 ]

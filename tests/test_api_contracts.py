@@ -22,12 +22,6 @@ class FrontendJsonApiTests(TestCase):
             password='A-strong-password-123',
             role=User.Role.CUSTOMER,
         )
-        self.owner = User.objects.create_user(
-            username='owner-api',
-            email='owner-api@example.com',
-            password='A-strong-password-123',
-            role=User.Role.OWNER,
-        )
 
     def test_customer_json_is_stored_with_customer_source(self):
         self.client.force_authenticate(self.customer)
@@ -51,12 +45,3 @@ class FrontendJsonApiTests(TestCase):
         self.assertEqual(risk_log.source_app, RiskLog.SourceApp.CUSTOMER_APP)
         self.assertEqual(risk_log.payload_json['order_id'], 42)
         self.assertEqual(risk_log.payload_json['items'][0]['sku'], 'SKU-1')
-
-    def test_owner_can_request_ai_guardrail_context(self):
-        self.client.force_authenticate(self.owner)
-
-        response = self.client.get('/api/ai_services/guardrail-prompt/')
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('system_prompt', response.data)
-        self.assertIn('context_json', response.data)

@@ -32,7 +32,6 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'apps.users',
     'apps.risks',
-    'apps.ai_services',
     'apps.catalog',
     'apps.payments',
 ]
