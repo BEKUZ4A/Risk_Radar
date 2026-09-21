@@ -1,4 +1,4 @@
-from django.test import TestCase, override_settings
+from django.test import TestCase, override_settings, override_settings
 from rest_framework.test import APIClient
 
 from apps.risks.models import RiskLog
@@ -46,6 +46,7 @@ class FrontendJsonApiTests(TestCase):
         self.assertEqual(risk_log.payload_json['order_id'], 42)
         self.assertEqual(risk_log.payload_json['items'][0]['sku'], 'SKU-1')
 
+    @override_settings(GOOGLE_CLIENT_ID='')
     def test_google_login_requires_configuration(self):
         response = self.client.post(
             '/api/users/auth/google/',
