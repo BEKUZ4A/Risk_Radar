@@ -97,7 +97,7 @@ function Login({ onLogin }) {
         </form>
         {mode === 'login' && googleClientId && <><div className="login-divider"><span>or</span></div><div id="google-login" className="google-login" /></>}
         {!googleClientId && <small>Google login requires VITE_GOOGLE_CLIENT_ID in employee/.env</small>}
-        <small>API: 13.60.20.155 · Employee access only</small>
+        <small>Local employee access · JWT + email verification</small>
       </section>
       <section className="login-art"><Scene /><div className="art-copy"><span>01</span><p>One catalog.<br /><strong>Every decision.</strong></p></div></section>
     </main>

@@ -9,10 +9,10 @@ npm install
 npm run dev
 ```
 
-The default API points to the local Django backend:
+The default development API uses the Vite proxy to reach the local Django backend:
 
 ```text
-http://127.0.0.1:8000
+/api -> http://127.0.0.1:8000
 ```
 
 Copy `.env.example` to `.env` only if the API URL needs to be changed.
