@@ -5,3 +5,5 @@ db.sqlite3
 __pycache__/
 *.py[cod]
 .pytest_cache/
+employee/node_modules/
+employee/dist/
