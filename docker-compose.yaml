@@ -7,8 +7,12 @@ services:
       - path: .env
         required: false
     environment:
-      DB_ENGINE: sqlite
-      SQLITE_DB_PATH: /app/data/db.sqlite3
+      DB_ENGINE: postgres
+      DB_NAME: risk_radar
+      DB_USER: risk_radar
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      DB_HOST: postgres
+      DB_PORT: "5432"
       ALLOWED_HOSTS: "13.60.20.155,${ALLOWED_HOSTS:-localhost,127.0.0.1}"
       CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,${CORS_ALLOWED_ORIGINS:-}"
       CSRF_TRUSTED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,${CSRF_TRUSTED_ORIGINS:-}"
@@ -16,9 +20,10 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
-      - redis
-    volumes:
-      - sqlite_data:/app/data
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py collectstatic --noinput &&
@@ -30,8 +35,12 @@ services:
       - path: .env
         required: false
     environment:
-      DB_ENGINE: sqlite
-      SQLITE_DB_PATH: /app/data/db.sqlite3
+      DB_ENGINE: postgres
+      DB_NAME: risk_radar
+      DB_USER: risk_radar
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      DB_HOST: postgres
+      DB_PORT: "5432"
       ALLOWED_HOSTS: "13.60.20.155,${ALLOWED_HOSTS:-localhost,127.0.0.1}"
       CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,${CORS_ALLOWED_ORIGINS:-}"
       CSRF_TRUSTED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,${CSRF_TRUSTED_ORIGINS:-}"
@@ -39,16 +48,36 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
-      - redis
-    volumes:
-      - sqlite_data:/app/data
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: celery -A config.celery worker --loglevel=info
 
   redis:
     image: redis:7-alpine
     volumes:
       - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: risk_radar
+      POSTGRES_USER: risk_radar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U risk_radar -d risk_radar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
-  sqlite_data:
   redisdata:
+  postgres_data:

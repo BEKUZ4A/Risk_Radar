@@ -1,4 +1,4 @@
-import random
+import secrets
 import re
 from uuid import uuid4
 
@@ -32,6 +32,7 @@ from apps.users.utils import (
     check_global_block,
     can_request_email_code,
     set_email_cooldown,
+    set_email_ip_cooldown,
     handle_failed_otp_attempt,
     clear_otp_attempts,
 )
@@ -54,6 +55,13 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Login email + password (USERNAME_FIELD = email)."""
 
     username_field = User.EMAIL_FIELD
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        if not self.user.is_email_verified:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Email tasdiqlanmagan.')
+        return data
 
 
 class EmailTokenObtainPairView(TokenObtainPairView):
@@ -138,14 +146,15 @@ class RegisterView(APIView):
         if is_blocked:
             return Response({'error': msg}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
-        can_send, cooldown_msg = can_request_email_code(email)
+        can_send, cooldown_msg = can_request_email_code(email, _client_ip(request))
         if not can_send:
             return Response({'error': cooldown_msg}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
         user = serializer.save()
-        code = str(random.randint(100000, 999999))
+        code = str(secrets.randbelow(900000) + 100000)
         cache.set(f'email_otp:verify:{email}', code, timeout=300)
         set_email_cooldown(email)
+        set_email_ip_cooldown(_client_ip(request))
         send_otp_email.delay(email, code, 'verification')
 
         UserActivityLog.objects.create(
@@ -246,18 +255,19 @@ class RequestLoginCodeView(APIView):
         if is_blocked:
             return Response({'error': msg}, status=429)
 
-        can_send, cooldown_msg = can_request_email_code(email)
+        can_send, cooldown_msg = can_request_email_code(email, _client_ip(request))
         if not can_send:
             return Response({'error': cooldown_msg}, status=429)
 
         if not User.objects.filter(email=email).exists():
-            return Response({'error': 'Bu email bilan foydalanuvchi topilmadi.'}, status=404)
+            return Response({'message': 'Agar akkaunt mavjud bo‘lsa, kod yuborildi.'}, status=202)
 
-        code = str(random.randint(100000, 999999))
+        code = str(secrets.randbelow(900000) + 100000)
         cache.set(f'email_otp:login:{email}', code, timeout=300)
         set_email_cooldown(email)
+        set_email_ip_cooldown(_client_ip(request))
         send_otp_email.delay(email, code, 'login')
-        return Response({'message': 'Kirish kodi emailga yuborildi.', 'email': email})
+        return Response({'message': 'Agar akkaunt mavjud bo‘lsa, kod yuborildi.'}, status=202)
 
 
 class VerifyLoginCodeView(APIView):
@@ -295,11 +305,10 @@ class VerifyLoginCodeView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({'error': 'Foydalanuvchi topilmadi.'}, status=404)
+            return Response({'error': 'Kod noto‘g‘ri.'}, status=400)
 
         if not user.is_email_verified:
-            user.is_email_verified = True
-            user.save(update_fields=['is_email_verified'])
+            return Response({'error': 'Email tasdiqlanmagan.'}, status=403)
 
         UserActivityLog.objects.create(
             user=user,
@@ -325,18 +334,19 @@ class RequestPasswordResetEmailView(APIView):
         if is_blocked:
             return Response({'error': msg}, status=429)
 
-        can_send, cooldown_msg = can_request_email_code(email)
+        can_send, cooldown_msg = can_request_email_code(email, _client_ip(request))
         if not can_send:
             return Response({'error': cooldown_msg}, status=429)
 
         if not User.objects.filter(email=email).exists():
-            return Response({'error': 'Bu email bilan foydalanuvchi topilmadi.'}, status=404)
+            return Response({'message': 'Agar akkaunt mavjud bo‘lsa, kod yuborildi.'}, status=202)
 
-        code = str(random.randint(100000, 999999))
+        code = str(secrets.randbelow(900000) + 100000)
         cache.set(f'email_otp:reset:{email}', code, timeout=300)
         set_email_cooldown(email)
+        set_email_ip_cooldown(_client_ip(request))
         send_otp_email.delay(email, code, 'password_reset')
-        return Response({'message': 'Parolni tiklash kodi emailga yuborildi.'})
+        return Response({'message': 'Agar akkaunt mavjud bo‘lsa, kod yuborildi.'}, status=202)
 
 
 class ConfirmPasswordResetEmailView(APIView):

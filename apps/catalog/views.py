@@ -1,14 +1,34 @@
-from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 
 from apps.users.models import User
-from apps.users.permissions import IsCatalogViewer, IsOwnerOrCustomer, is_root_user
+from apps.users.permissions import IsCatalogViewer, is_root_user
 from apps.risks.services import RiskEngineService
 
 from .models import Category, Product
 from .serializers import CategorySerializer, ProductSerializer
+
+
+class CatalogPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+def _page_response(request, queryset, serializer_class):
+    paginator = CatalogPagination()
+    page = paginator.paginate_queryset(queryset, request)
+    return paginator.get_paginated_response(serializer_class(page, many=True).data)
+
+
+def _can_edit(request, obj):
+    return (
+        is_root_user(request.user)
+        or request.user.role == User.Role.OWNER
+        or obj.created_by_id == request.user.id
+    )
 
 
 class CategoryListCreateAPIView(APIView):
@@ -19,7 +39,7 @@ class CategoryListCreateAPIView(APIView):
     @extend_schema(responses={200: CategorySerializer(many=True)})
     def get(self, request):
         qs = Category.objects.all()
-        return Response(CategorySerializer(qs, many=True).data)
+        return _page_response(request, qs, CategorySerializer)
 
     @extend_schema(request=CategorySerializer, responses={201: CategorySerializer})
     def post(self, request):
@@ -49,6 +69,8 @@ class CategoryDetailAPIView(APIView):
         obj = self.get_object(pk)
         if not obj:
             return Response({'error': 'Kategoriya topilmadi.'}, status=404)
+        if not _can_edit(request, obj):
+            return Response({'error': 'Bu obyektni faqat yaratuvchisi tahrirlay oladi.'}, status=403)
         serializer = CategorySerializer(obj, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
@@ -77,7 +99,7 @@ class ProductListCreateAPIView(APIView):
         category_id = request.query_params.get('category')
         if category_id:
             qs = qs.filter(category_id=category_id)
-        return Response(ProductSerializer(qs, many=True).data)
+        return _page_response(request, qs, ProductSerializer)
 
     @extend_schema(request=ProductSerializer, responses={201: ProductSerializer})
     def post(self, request):
@@ -108,6 +130,8 @@ class ProductDetailAPIView(APIView):
         obj = self.get_object(pk)
         if not obj:
             return Response({'error': 'Mahsulot topilmadi.'}, status=404)
+        if not _can_edit(request, obj):
+            return Response({'error': 'Bu obyektni faqat yaratuvchisi tahrirlay oladi.'}, status=403)
         old_price = obj.price
         serializer = ProductSerializer(obj, data=request.data, partial=True)
         if not serializer.is_valid():

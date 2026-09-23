@@ -18,15 +18,23 @@ def check_global_block(email: str):
     return False, None
 
 
-def can_request_email_code(email: str):
+def can_request_email_code(email: str, ip: str | None = None):
     cooldown_key = f'email_cooldown:{email.lower()}'
+    ip_key = f'email_cooldown_ip:{ip}' if ip else None
     if cache.get(cooldown_key):
+        return False, 'Email kod so‘rovi uchun 1 daqiqa kuting.'
+    if ip_key and cache.get(ip_key):
         return False, 'Email kod so‘rovi uchun 1 daqiqa kuting.'
     return True, None
 
 
 def set_email_cooldown(email: str):
     cache.set(f'email_cooldown:{email.lower()}', '1', timeout=EMAIL_COOLDOWN)
+
+
+def set_email_ip_cooldown(ip: str | None):
+    if ip:
+        cache.set(f'email_cooldown_ip:{ip}', '1', timeout=EMAIL_COOLDOWN)
 
 
 def handle_failed_otp_attempt(email: str):

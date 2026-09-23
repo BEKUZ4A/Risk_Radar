@@ -6,15 +6,14 @@ from apps.users.models import User
 def is_root_user(user) -> bool:
     """
     Root / superuser — barcha API endpointlarga to'liq ruxsat.
-    username == 'root' yoki is_superuser=True.
+    Faqat Django privilege flaglari root darajasini beradi.
     """
     if not user or not user.is_authenticated:
         return False
-    if getattr(user, 'is_superuser', False):
-        return True
-    if getattr(user, 'username', None) == 'root':
-        return True
-    return False
+    return bool(
+        getattr(user, 'is_superuser', False)
+        or getattr(user, 'is_staff', False)
+    )
 
 
 class IsBusinessOwner(BasePermission):

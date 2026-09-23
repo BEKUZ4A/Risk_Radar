@@ -1,6 +1,9 @@
 from datetime import timedelta
 
-from django.db.models import Count
+from decimal import Decimal
+
+from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from apps.catalog.models import Product
@@ -25,6 +28,16 @@ class RiskEngineService:
     """
 
     @staticmethod
+    def _json_safe(value):
+        if isinstance(value, Decimal):
+            return str(value)
+        if isinstance(value, dict):
+            return {key: RiskEngineService._json_safe(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [RiskEngineService._json_safe(item) for item in value]
+        return value
+
+    @staticmethod
     def _persist_log(
         *,
         source_app: str,
@@ -33,7 +46,7 @@ class RiskEngineService:
     ) -> RiskLog:
         return RiskLog.objects.create(
             source_app=source_app,
-            payload_json=payload,
+            payload_json=RiskEngineService._json_safe(payload),
             risk_score=result.score,
             risk_level=result.level,
             analysis_details=result.analysis_text,
@@ -71,8 +84,8 @@ class RiskEngineService:
 
     @staticmethod
     def process_customer_json(data: dict) -> RiskLog:
-        inflow = float(data.get('inflow_amount', 0) or 0)
-        outflow = float(data.get('outflow_amount', 0) or 0)
+        inflow = Decimal(data.get('inflow_amount', 0) or 0)
+        outflow = Decimal(data.get('outflow_amount', 0) or 0)
         inactive_users = data.get('inactive_users_15days') or []
 
         for u in inactive_users:
@@ -89,11 +102,16 @@ class RiskEngineService:
             )
 
         current_month = timezone.now().strftime('%Y-%m')
-        fin_obj, _ = FinancialBalance.objects.get_or_create(month_year=current_month)
-        fin_obj.total_inflow += inflow
-        fin_obj.total_outflow += outflow
-        fin_obj.net_profit = fin_obj.total_inflow - fin_obj.total_outflow
-        fin_obj.save()
+        with transaction.atomic():
+            fin_obj, _ = FinancialBalance.objects.select_for_update().get_or_create(
+                month_year=current_month
+            )
+            fin_obj.total_inflow = F('total_inflow') + inflow
+            fin_obj.total_outflow = F('total_outflow') + outflow
+            fin_obj.save(update_fields=['total_inflow', 'total_outflow', 'updated_at'])
+            fin_obj.refresh_from_db()
+            fin_obj.net_profit = fin_obj.total_inflow - fin_obj.total_outflow
+            fin_obj.save(update_fields=['net_profit', 'updated_at'])
 
         result = evaluate_customer_event(
             inflow_amount=inflow,

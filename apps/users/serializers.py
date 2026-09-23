@@ -7,13 +7,8 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id',
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'role',
-            'is_email_verified',
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'role', 'is_email_verified',
         ]
         read_only_fields = ['id', 'is_email_verified']
 
@@ -27,6 +22,11 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         return value.lower().strip()
+
+    def validate_username(self, value):
+        if value.strip().lower() == 'root':
+            raise serializers.ValidationError('Bu username rezerv qilingan.')
+        return value
 
     def create(self, validated_data):
         return User.objects.create_user(
@@ -78,11 +78,6 @@ class UserActivityLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserActivityLog
         fields = [
-            'id',
-            'user',
-            'email',
-            'action_name',
-            'ip_address',
-            'request_data',
-            'timestamp',
+            'id', 'user', 'email', 'action_name', 'ip_address',
+            'request_data', 'timestamp',
         ]

@@ -11,6 +11,7 @@ class CheckoutSerializer(serializers.Serializer):
         allow_blank=True,
         help_text='Stripe PaymentMethod id (masalan pm_card_visa). Bo‘sh bo‘lsa test pm_card_visa.',
     )
+    idempotency_key = serializers.CharField(max_length=255, required=True)
 
 
 class PaymentSerializer(serializers.ModelSerializer):

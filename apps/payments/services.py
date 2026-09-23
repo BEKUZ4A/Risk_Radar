@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+from uuid import uuid4
 
 import stripe
 from django.conf import settings
@@ -38,11 +39,17 @@ class StripePaymentService:
         product_id: int,
         quantity: int,
         payment_method_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> Payment:
         cls._configure()
+        idempotency_key = idempotency_key or uuid4().hex
 
         if quantity < 1:
             raise ValueError('Miqdor 1 dan kam bo‘lishi mumkin emas.')
+
+        existing = Payment.objects.filter(idempotency_key=idempotency_key).first()
+        if existing:
+            return existing
 
         product = Product.objects.filter(pk=product_id, is_active=True).first()
         if not product:
@@ -67,6 +74,7 @@ class StripePaymentService:
             amount_total=amount_total,
             currency='usd',
             status=Payment.Status.PENDING,
+            idempotency_key=idempotency_key,
         )
 
         try:
@@ -88,7 +96,10 @@ class StripePaymentService:
                 # Test: Stripe test payment method (pm_card_visa) — frontend odatda yuboradi
                 intent_params['payment_method'] = 'pm_card_visa'
 
-            intent = stripe.PaymentIntent.create(**intent_params)
+            intent = stripe.PaymentIntent.create(
+                **intent_params,
+                idempotency_key=idempotency_key,
+            )
             payment.stripe_payment_intent_id = intent.id
             payment.raw_stripe_response = {'id': intent.id, 'status': intent.status}
             payment.save(update_fields=['stripe_payment_intent_id', 'raw_stripe_response', 'updated_at'])

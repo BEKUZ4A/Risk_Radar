@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 
 from apps.users.models import UserActivityLog
-from apps.users.permissions import IsEmployee
+from apps.users.permissions import IsEmployeeOrOwner
 
 from .models import Payment
 from .serializers import CheckoutSerializer, PaymentSerializer
@@ -22,7 +22,7 @@ class EmployeeCheckoutAPIView(APIView):
     Fail / DB da tasdiqlanmasa → ombor o‘zgarmaydi, error qaytadi.
     """
 
-    permission_classes = [IsEmployee]
+    permission_classes = [IsEmployeeOrOwner]
 
     @extend_schema(request=CheckoutSerializer, responses={200: PaymentSerializer, 400: dict})
     def post(self, request):
@@ -37,6 +37,7 @@ class EmployeeCheckoutAPIView(APIView):
                 product_id=data['product_id'],
                 quantity=data['quantity'],
                 payment_method_id=data.get('payment_method_id') or None,
+                idempotency_key=data['idempotency_key'],
             )
         except ValueError as exc:
             UserActivityLog.objects.create(
@@ -81,7 +82,7 @@ class EmployeeCheckoutAPIView(APIView):
 
 
 class EmployeePaymentListAPIView(APIView):
-    permission_classes = [IsEmployee]
+    permission_classes = [IsEmployeeOrOwner]
 
     @extend_schema(responses={200: PaymentSerializer(many=True)})
     def get(self, request):

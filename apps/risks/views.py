@@ -26,7 +26,14 @@ def _audit(request, action_name: str, payload):
             user=request.user,
             action_name=action_name,
             ip_address=_client_ip(request),
-            request_data=payload if isinstance(payload, dict) else {'raw': str(payload)},
+            request_data=(
+                {
+                    key: str(value) if isinstance(value, Decimal) else value
+                    for key, value in payload.items()
+                }
+                if isinstance(payload, dict)
+                else {'raw': str(payload)}
+            ),
         )
 
 
@@ -67,9 +74,9 @@ class CustomerDataIngestAPIView(APIView):
         data = serializer.validated_data
         payload = {
             **data,
-            'total_amount': float(data.get('total_amount') or 0),
-            'inflow_amount': float(data.get('inflow_amount') or 0),
-            'outflow_amount': float(data.get('outflow_amount') or 0),
+            'total_amount': data.get('total_amount') or 0,
+            'inflow_amount': data.get('inflow_amount') or 0,
+            'outflow_amount': data.get('outflow_amount') or 0,
         }
         risk_log = RiskEngineService.process_customer_json(payload)
         _audit(request, 'CUSTOMER_INGEST', payload)
@@ -110,3 +117,4 @@ class EvaluateBusinessRiskAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+from decimal import Decimal
